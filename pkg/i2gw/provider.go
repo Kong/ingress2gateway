@@ -20,8 +20,11 @@ import (
 	"context"
 
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -32,17 +35,37 @@ import (
 // func at startup.
 var ProviderConstructorByName = map[ProviderName]ProviderConstructor{}
 
+var ProviderClientBuilderByName = map[ProviderName]ProviderClientBuilder{}
+
 // ProviderName is a string alias that stores the concrete Provider name.
 type ProviderName string
 
 // ProviderConstructor is a construction function that constructs concrete
 // implementations of the Provider interface.
-type ProviderConstructor func(conf *ProviderConf) Provider
+type ProviderConstructor func(conf ProviderConf) Provider
+
+type ProviderClientBuilder func(config *rest.Config, namespace string) (client.Client, error)
 
 // ProviderConf contains all the configuration required for every concrete
 // Provider implementation.
 type ProviderConf struct {
-	Client client.Client
+	Client          client.Client
+	ClientConfig    *rest.Config
+	Namespace       string
+	FilteredObjects []schema.GroupKind
+}
+
+// DefaultFilteredObjects is the default list of the resources not to be listed
+// when printing all the resources.
+var DefaultFilteredObjects = []schema.GroupKind{
+	{
+		Group: networkingv1.SchemeGroupVersion.Group,
+		Kind:  "Ingress",
+	},
+	{
+		Group: networkingv1.SchemeGroupVersion.Group,
+		Kind:  "IngressClass",
+	},
 }
 
 // The Provider interface specifies the required functionality which needs to be
@@ -51,17 +74,18 @@ type ProviderConf struct {
 type Provider interface {
 	CustomResourceReader
 	ResourceConverter
+	ResourceFilter
 }
 
 type CustomResourceReader interface {
 
 	// ReadResourcesFromCluster reads custom resources associated with
 	// the underlying Provider implementation from the kubernetes cluster.
-	ReadResourcesFromCluster(ctx context.Context, customResources interface{}) error
+	ReadResourcesFromCluster(ctx context.Context, cl client.Client, customResources map[schema.GroupVersionKind]interface{}) error
 
 	// ReadResourcesFromFiles reads custom resources associated with
 	// the underlying Provider implementation from the files.
-	ReadResourcesFromFiles(ctx context.Context, customResources interface{}, filename string) error
+	ReadResourcesFromFiles(ctx context.Context, customResources map[schema.GroupVersionKind]interface{}, filename string, namespace string) error
 }
 
 // The ResourceConverter interface specifies all the implemented Gateway API resource
@@ -73,11 +97,16 @@ type ResourceConverter interface {
 	ToGatewayAPI(resources InputResources) (GatewayResources, field.ErrorList)
 }
 
+type ResourceFilter interface {
+	// Filter filters out the objects that must not be printed.
+	Filter([]*unstructured.Unstructured) []*unstructured.Unstructured
+}
+
 // InputResources contains all Ingress objects, and Provider specific
 // custom resources.
 type InputResources struct {
 	Ingresses       []networkingv1.Ingress
-	CustomResources interface{}
+	CustomResources map[schema.GroupVersionKind]interface{}
 }
 
 // GatewayResources contains all Gateway-API objects.
@@ -91,6 +120,17 @@ type GatewayResources struct {
 	UDPRoutes  map[types.NamespacedName]gatewayv1alpha2.UDPRoute
 
 	ReferenceGrants map[types.NamespacedName]gatewayv1alpha2.ReferenceGrant
+}
+
+// ResourcesAmount returns the total amount of Gateway API resources to display.
+func (r GatewayResources) ResourcesAmount() int {
+	return len(r.Gateways) +
+		len(r.GatewayClasses) +
+		len(r.HTTPRoutes) +
+		len(r.TLSRoutes) +
+		len(r.TCPRoutes) +
+		len(r.UDPRoutes)
+
 }
 
 // FeatureParser is a function that reads the InputResources, and applies
