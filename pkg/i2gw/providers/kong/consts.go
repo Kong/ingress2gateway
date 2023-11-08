@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 const (
@@ -32,11 +32,11 @@ const (
 )
 
 const (
-	kongResourcesGroup gatewayv1beta1.Group = "configuration.konghq.com"
+	kongResourcesGroup gatewayv1.Group = "configuration.konghq.com"
 
-	kongPluginKind     gatewayv1beta1.Kind = "KongPlugin"
-	kongTCPIngressKind gatewayv1beta1.Kind = "TCPIngress"
-	kongUDPIngressKind gatewayv1beta1.Kind = "UDPIngress"
+	kongPluginKind     gatewayv1.Kind = "KongPlugin"
+	kongTCPIngressKind gatewayv1.Kind = "TCPIngress"
+	kongUDPIngressKind gatewayv1.Kind = "UDPIngress"
 )
 
 var (

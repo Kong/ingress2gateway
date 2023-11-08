@@ -28,8 +28,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 func UDPIngressToGatewayAPI(ingresses []kongv1beta1.UDPIngress) (i2gw.GatewayResources, field.ErrorList) {
@@ -54,7 +54,7 @@ func UDPIngressToGatewayAPI(ingresses []kongv1beta1.UDPIngress) (i2gw.GatewayRes
 		udpRouteByKey[key] = route
 	}
 
-	gatewayByKey := make(map[types.NamespacedName]gatewayv1beta1.Gateway)
+	gatewayByKey := make(map[types.NamespacedName]gatewayv1.Gateway)
 	for _, gateway := range gateways {
 		key := types.NamespacedName{Namespace: gateway.Namespace, Name: gateway.Name}
 		gatewayByKey[key] = gateway
@@ -94,15 +94,15 @@ func (a *udpIngressAggregator) addIngressRule(namespace, name, ingressClass stri
 	rg.rules = append(rg.rules, udpIngressRule{rule: rule})
 }
 
-func (a *udpIngressAggregator) toRoutesAndGateways() ([]gatewayv1alpha2.UDPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
+func (a *udpIngressAggregator) toRoutesAndGateways() ([]gatewayv1alpha2.UDPRoute, []gatewayv1.Gateway, field.ErrorList) {
 	var udpRoutes []gatewayv1alpha2.UDPRoute
 
 	var errors field.ErrorList
-	listenersByNamespacedGateway := map[string][]gatewayv1beta1.Listener{}
+	listenersByNamespacedGateway := map[string][]gatewayv1.Listener{}
 
 	for _, rg := range a.ruleGroups {
-		listener := gatewayv1beta1.Listener{}
-		listener.Port = gatewayv1beta1.PortNumber(rg.port)
+		listener := gatewayv1.Listener{}
+		listener.Port = gatewayv1.PortNumber(rg.port)
 		gwKey := fmt.Sprintf("%s/%s", rg.namespace, rg.ingressClass)
 		listenersByNamespacedGateway[gwKey] = append(listenersByNamespacedGateway[gwKey], listener)
 		var errs field.ErrorList
@@ -113,7 +113,7 @@ func (a *udpIngressAggregator) toRoutesAndGateways() ([]gatewayv1alpha2.UDPRoute
 		errors = append(errors, errs...)
 	}
 
-	gatewaysByKey := map[string]*gatewayv1beta1.Gateway{}
+	gatewaysByKey := map[string]*gatewayv1.Gateway{}
 	for gwKey, listeners := range listenersByNamespacedGateway {
 		parts := strings.Split(gwKey, "/")
 		if len(parts) != 2 {
@@ -122,28 +122,28 @@ func (a *udpIngressAggregator) toRoutesAndGateways() ([]gatewayv1alpha2.UDPRoute
 		}
 		gateway := gatewaysByKey[gwKey]
 		if gateway == nil {
-			gateway = &gatewayv1beta1.Gateway{
+			gateway = &gatewayv1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: parts[0],
 					Name:      parts[1],
 				},
-				Spec: gatewayv1beta1.GatewaySpec{
-					GatewayClassName: gatewayv1beta1.ObjectName(parts[1]),
+				Spec: gatewayv1.GatewaySpec{
+					GatewayClassName: gatewayv1.ObjectName(parts[1]),
 				},
 			}
 			gateway.SetGroupVersionKind(common.GatewayGVK)
 			gatewaysByKey[gwKey] = gateway
 		}
 		for _, listener := range listeners {
-			gateway.Spec.Listeners = append(gateway.Spec.Listeners, gatewayv1beta1.Listener{
-				Protocol: gatewayv1beta1.UDPProtocolType,
+			gateway.Spec.Listeners = append(gateway.Spec.Listeners, gatewayv1.Listener{
+				Protocol: gatewayv1.UDPProtocolType,
 				Port:     listener.Port,
 				Name:     *buildSectionName("udp", strconv.Itoa(int(listener.Port))),
 			})
 		}
 	}
 
-	var gateways []gatewayv1beta1.Gateway
+	var gateways []gatewayv1.Gateway
 	for _, gw := range gatewaysByKey {
 		gateways = append(gateways, *gw)
 	}
@@ -161,17 +161,17 @@ func (rg *udpIngressRuleGroup) toUDPRoute() (gatewayv1alpha2.UDPRoute, field.Err
 		},
 		Spec: gatewayv1alpha2.UDPRouteSpec{},
 		Status: gatewayv1alpha2.UDPRouteStatus{
-			RouteStatus: gatewayv1beta1.RouteStatus{
-				Parents: []gatewayv1beta1.RouteParentStatus{},
+			RouteStatus: gatewayv1.RouteStatus{
+				Parents: []gatewayv1.RouteParentStatus{},
 			},
 		},
 	}
 	udpRoute.SetGroupVersionKind(common.UDPRouteGVK)
 
 	if rg.ingressClass != "" {
-		udpRoute.Spec.ParentRefs = []gatewayv1beta1.ParentReference{
+		udpRoute.Spec.ParentRefs = []gatewayv1.ParentReference{
 			{
-				Name:        gatewayv1beta1.ObjectName(rg.ingressClass),
+				Name:        gatewayv1.ObjectName(rg.ingressClass),
 				SectionName: buildSectionName("udp", strconv.Itoa(rg.port)),
 			},
 		}
@@ -180,11 +180,11 @@ func (rg *udpIngressRuleGroup) toUDPRoute() (gatewayv1alpha2.UDPRoute, field.Err
 	for _, rule := range rg.rules {
 		udpRoute.Spec.Rules = append(udpRoute.Spec.Rules,
 			gatewayv1alpha2.UDPRouteRule{
-				BackendRefs: []gatewayv1beta1.BackendRef{
+				BackendRefs: []gatewayv1.BackendRef{
 					{
-						BackendObjectReference: gatewayv1beta1.BackendObjectReference{
-							Name: gatewayv1beta1.ObjectName(rule.rule.Backend.ServiceName),
-							Port: common.PtrTo(gatewayv1beta1.PortNumber(rule.rule.Backend.ServicePort)),
+						BackendObjectReference: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName(rule.rule.Backend.ServiceName),
+							Port: common.PtrTo(gatewayv1.PortNumber(rule.rule.Backend.ServicePort)),
 						},
 					},
 				},

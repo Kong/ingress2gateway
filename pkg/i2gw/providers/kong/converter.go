@@ -26,7 +26,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	kong1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 )
@@ -64,7 +64,7 @@ func (c *converter) ToGatewayAPI(resources i2gw.InputResources) (i2gw.GatewayRes
 	if tcpIngresses, ok := resources.CustomResources[schema.GroupVersionKind{
 		Group:   string(kongResourcesGroup),
 		Kind:    string(kongTCPIngressKind),
-		Version: "v1beta1",
+		Version: "v1",
 	}].([]kong1beta1.TCPIngress); ok {
 		tcpGatewayResources, errs := crds.TcpIngressToGatewayAPI(tcpIngresses)
 		if errs != nil {
@@ -91,12 +91,12 @@ func (c *converter) ToGatewayAPI(resources i2gw.InputResources) (i2gw.GatewayRes
 	return gatewayResources, errs
 }
 
-func toHTTPRouteMatchOption(routePath networkingv1.HTTPIngressPath, path *field.Path) (*gatewayv1beta1.HTTPRouteMatch, *field.Error) {
-	pmPrefix := gatewayv1beta1.PathMatchPathPrefix
-	pmExact := gatewayv1beta1.PathMatchExact
-	pmRegex := gatewayv1beta1.PathMatchRegularExpression
+func toHTTPRouteMatchOption(routePath networkingv1.HTTPIngressPath, path *field.Path) (*gatewayv1.HTTPRouteMatch, *field.Error) {
+	pmPrefix := gatewayv1.PathMatchPathPrefix
+	pmExact := gatewayv1.PathMatchExact
+	pmRegex := gatewayv1.PathMatchRegularExpression
 
-	match := &gatewayv1beta1.HTTPRouteMatch{Path: &gatewayv1beta1.HTTPPathMatch{Value: &routePath.Path}}
+	match := &gatewayv1.HTTPRouteMatch{Path: &gatewayv1.HTTPPathMatch{Value: &routePath.Path}}
 	switch *routePath.PathType {
 	case networkingv1.PathTypePrefix:
 		match.Path.Type = &pmPrefix

@@ -21,21 +21,21 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	configurationv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 )
 
-func ToBackendRef(ib configurationv1beta1.IngressBackend, path *field.Path) (*gatewayv1beta1.BackendRef, *field.Error) {
-	return &gatewayv1beta1.BackendRef{
-		BackendObjectReference: gatewayv1beta1.BackendObjectReference{
-			Name: gatewayv1beta1.ObjectName(ib.ServiceName),
-			Port: common.PtrTo(gatewayv1beta1.PortNumber(ib.ServicePort)),
+func ToBackendRef(ib configurationv1beta1.IngressBackend, path *field.Path) (*gatewayv1.BackendRef, *field.Error) {
+	return &gatewayv1.BackendRef{
+		BackendObjectReference: gatewayv1.BackendObjectReference{
+			Name: gatewayv1.ObjectName(ib.ServiceName),
+			Port: common.PtrTo(gatewayv1.PortNumber(ib.ServicePort)),
 		},
 	}, nil
 }
 
-func buildSectionName(parts ...string) *gatewayv1beta1.SectionName {
+func buildSectionName(parts ...string) *gatewayv1.SectionName {
 	builder := strings.Builder{}
 	for i, p := range parts {
 		if i != 0 {
@@ -43,5 +43,5 @@ func buildSectionName(parts ...string) *gatewayv1beta1.SectionName {
 		}
 		builder.WriteString(p)
 	}
-	return (*gatewayv1beta1.SectionName)(common.PtrTo(builder.String()))
+	return (*gatewayv1.SectionName)(common.PtrTo(builder.String()))
 }

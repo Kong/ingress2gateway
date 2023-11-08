@@ -35,8 +35,8 @@ import (
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string) (GatewayResources, error) {
@@ -279,9 +279,9 @@ func GetSupportedProviders() []string {
 
 func MergeGatewayResources(gatewayResources ...GatewayResources) GatewayResources {
 	mergedGatewayResources := GatewayResources{
-		Gateways:        make(map[types.NamespacedName]gatewayv1beta1.Gateway),
-		GatewayClasses:  make(map[types.NamespacedName]gatewayv1beta1.GatewayClass),
-		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1beta1.HTTPRoute),
+		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
+		GatewayClasses:  make(map[types.NamespacedName]gatewayv1.GatewayClass),
+		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
 		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		UDPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),

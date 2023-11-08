@@ -26,8 +26,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // ProviderConstructorByName is a map of ProviderConstructor functions by a
@@ -111,10 +111,10 @@ type InputResources struct {
 
 // GatewayResources contains all Gateway-API objects.
 type GatewayResources struct {
-	Gateways       map[types.NamespacedName]gatewayv1beta1.Gateway
-	GatewayClasses map[types.NamespacedName]gatewayv1beta1.GatewayClass
+	Gateways       map[types.NamespacedName]gatewayv1.Gateway
+	GatewayClasses map[types.NamespacedName]gatewayv1.GatewayClass
 
-	HTTPRoutes map[types.NamespacedName]gatewayv1beta1.HTTPRoute
+	HTTPRoutes map[types.NamespacedName]gatewayv1.HTTPRoute
 	TLSRoutes  map[types.NamespacedName]gatewayv1alpha2.TLSRoute
 	TCPRoutes  map[types.NamespacedName]gatewayv1alpha2.TCPRoute
 	UDPRoutes  map[types.NamespacedName]gatewayv1alpha2.UDPRoute

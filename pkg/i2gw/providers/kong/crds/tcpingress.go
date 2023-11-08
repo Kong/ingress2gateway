@@ -27,8 +27,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	configurationv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 )
@@ -62,7 +62,7 @@ func TcpIngressToGatewayAPI(ingresses []configurationv1beta1.TCPIngress) (i2gw.G
 		tlsRouteByKey[key] = route
 	}
 
-	gatewayByKey := make(map[types.NamespacedName]gatewayv1beta1.Gateway)
+	gatewayByKey := make(map[types.NamespacedName]gatewayv1.Gateway)
 	for _, gateway := range gateways {
 		key := types.NamespacedName{Namespace: gateway.Namespace, Name: gateway.Name}
 		gatewayByKey[key] = gateway
@@ -107,32 +107,32 @@ func (a *tcpIngressAggregator) addIngressRule(namespace, ingressName, ingressCla
 	rg.rules = append(rg.rules, ingressRule{rule: rule})
 }
 
-func (a *tcpIngressAggregator) toRoutesAndGateways() ([]gatewayv1alpha2.TCPRoute, []gatewayv1alpha2.TLSRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
+func (a *tcpIngressAggregator) toRoutesAndGateways() ([]gatewayv1alpha2.TCPRoute, []gatewayv1alpha2.TLSRoute, []gatewayv1.Gateway, field.ErrorList) {
 	var tcpRoutes []gatewayv1alpha2.TCPRoute
 	var tlsRoutes []gatewayv1alpha2.TLSRoute
 
 	var errors field.ErrorList
-	listenersByNamespacedGateway := map[string][]gatewayv1beta1.Listener{}
+	listenersByNamespacedGateway := map[string][]gatewayv1.Listener{}
 
 	for _, rg := range a.ruleGroups {
-		listener := gatewayv1beta1.Listener{}
+		listener := gatewayv1.Listener{}
 		if rg.host != "" {
-			listener.Hostname = (*gatewayv1beta1.Hostname)(&rg.host)
+			listener.Hostname = (*gatewayv1.Hostname)(&rg.host)
 		} else if len(rg.tls) == 1 && len(rg.tls[0].Hosts) == 1 {
-			listener.Hostname = (*gatewayv1beta1.Hostname)(&rg.tls[0].Hosts[0])
+			listener.Hostname = (*gatewayv1.Hostname)(&rg.tls[0].Hosts[0])
 		}
 		if len(rg.tls) > 0 {
-			listener.TLS = &gatewayv1beta1.GatewayTLSConfig{
-				Mode: common.PtrTo(gatewayv1beta1.TLSModePassthrough),
+			listener.TLS = &gatewayv1.GatewayTLSConfig{
+				Mode: common.PtrTo(gatewayv1.TLSModePassthrough),
 			}
 		}
-		listener.Port = gatewayv1beta1.PortNumber(rg.port)
+		listener.Port = gatewayv1.PortNumber(rg.port)
 		for _, tls := range rg.tls {
 			listener.TLS.CertificateRefs = append(listener.TLS.CertificateRefs,
-				gatewayv1beta1.SecretObjectReference{
-					Group: common.PtrTo(gatewayv1beta1.Group("")),
-					Kind:  common.PtrTo(gatewayv1beta1.Kind("Secret")),
-					Name:  gatewayv1beta1.ObjectName(tls.SecretName),
+				gatewayv1.SecretObjectReference{
+					Group: common.PtrTo(gatewayv1.Group("")),
+					Kind:  common.PtrTo(gatewayv1.Kind("Secret")),
+					Name:  gatewayv1.ObjectName(tls.SecretName),
 				})
 		}
 		gwKey := fmt.Sprintf("%s/%s", rg.namespace, rg.ingressClass)
@@ -150,7 +150,7 @@ func (a *tcpIngressAggregator) toRoutesAndGateways() ([]gatewayv1alpha2.TCPRoute
 		errors = append(errors, errs...)
 	}
 
-	gatewaysByKey := map[string]*gatewayv1beta1.Gateway{}
+	gatewaysByKey := map[string]*gatewayv1.Gateway{}
 	for gwKey, listeners := range listenersByNamespacedGateway {
 		parts := strings.Split(gwKey, "/")
 		if len(parts) != 2 {
@@ -159,13 +159,13 @@ func (a *tcpIngressAggregator) toRoutesAndGateways() ([]gatewayv1alpha2.TCPRoute
 		}
 		gateway := gatewaysByKey[gwKey]
 		if gateway == nil {
-			gateway = &gatewayv1beta1.Gateway{
+			gateway = &gatewayv1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: parts[0],
 					Name:      parts[1],
 				},
-				Spec: gatewayv1beta1.GatewaySpec{
-					GatewayClassName: gatewayv1beta1.ObjectName(parts[1]),
+				Spec: gatewayv1.GatewaySpec{
+					GatewayClassName: gatewayv1.ObjectName(parts[1]),
 				},
 			}
 			gateway.SetGroupVersionKind(common.GatewayGVK)
@@ -173,17 +173,17 @@ func (a *tcpIngressAggregator) toRoutesAndGateways() ([]gatewayv1alpha2.TCPRoute
 		}
 		for _, listener := range listeners {
 			if listener.TLS != nil {
-				gateway.Spec.Listeners = append(gateway.Spec.Listeners, gatewayv1beta1.Listener{
+				gateway.Spec.Listeners = append(gateway.Spec.Listeners, gatewayv1.Listener{
 					Hostname: listener.Hostname,
-					Protocol: gatewayv1beta1.TLSProtocolType,
+					Protocol: gatewayv1.TLSProtocolType,
 					Port:     listener.Port,
 					Name:     *buildSectionName("tls", string(*listener.Hostname), strconv.Itoa(int(listener.Port))),
 					TLS:      listener.TLS,
 				})
 			} else {
-				gateway.Spec.Listeners = append(gateway.Spec.Listeners, gatewayv1beta1.Listener{
+				gateway.Spec.Listeners = append(gateway.Spec.Listeners, gatewayv1.Listener{
 					Hostname: listener.Hostname,
-					Protocol: gatewayv1beta1.TCPProtocolType,
+					Protocol: gatewayv1.TCPProtocolType,
 					Port:     listener.Port,
 					Name:     *buildSectionName("tcp", string(*listener.Hostname), strconv.Itoa(int(listener.Port))),
 				})
@@ -191,7 +191,7 @@ func (a *tcpIngressAggregator) toRoutesAndGateways() ([]gatewayv1alpha2.TCPRoute
 		}
 	}
 
-	var gateways []gatewayv1beta1.Gateway
+	var gateways []gatewayv1.Gateway
 	for _, gw := range gatewaysByKey {
 		gateways = append(gateways, *gw)
 	}
@@ -209,17 +209,17 @@ func (rg *tcpIngressRuleGroup) toTCPRoute() (gatewayv1alpha2.TCPRoute, field.Err
 		},
 		Spec: gatewayv1alpha2.TCPRouteSpec{},
 		Status: gatewayv1alpha2.TCPRouteStatus{
-			RouteStatus: gatewayv1beta1.RouteStatus{
-				Parents: []gatewayv1beta1.RouteParentStatus{},
+			RouteStatus: gatewayv1.RouteStatus{
+				Parents: []gatewayv1.RouteParentStatus{},
 			},
 		},
 	}
 	tcpRoute.SetGroupVersionKind(common.TCPRouteGVK)
 
 	if rg.ingressClass != "" {
-		tcpRoute.Spec.ParentRefs = []gatewayv1beta1.ParentReference{
+		tcpRoute.Spec.ParentRefs = []gatewayv1.ParentReference{
 			{
-				Name:        gatewayv1beta1.ObjectName(rg.ingressClass),
+				Name:        gatewayv1.ObjectName(rg.ingressClass),
 				SectionName: buildSectionName("tcp", rg.host, strconv.Itoa(rg.port)),
 			},
 		}
@@ -228,11 +228,11 @@ func (rg *tcpIngressRuleGroup) toTCPRoute() (gatewayv1alpha2.TCPRoute, field.Err
 	for _, rule := range rg.rules {
 		tcpRoute.Spec.Rules = append(tcpRoute.Spec.Rules,
 			gatewayv1alpha2.TCPRouteRule{
-				BackendRefs: []gatewayv1beta1.BackendRef{
+				BackendRefs: []gatewayv1.BackendRef{
 					{
-						BackendObjectReference: gatewayv1beta1.BackendObjectReference{
-							Name: gatewayv1beta1.ObjectName(rule.rule.Backend.ServiceName),
-							Port: common.PtrTo(gatewayv1beta1.PortNumber(rule.rule.Backend.ServicePort)),
+						BackendObjectReference: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName(rule.rule.Backend.ServiceName),
+							Port: common.PtrTo(gatewayv1.PortNumber(rule.rule.Backend.ServicePort)),
 						},
 					},
 				},
@@ -253,17 +253,17 @@ func (rg *tcpIngressRuleGroup) toTLSRoute() (gatewayv1alpha2.TLSRoute, field.Err
 		},
 		Spec: gatewayv1alpha2.TLSRouteSpec{},
 		Status: gatewayv1alpha2.TLSRouteStatus{
-			RouteStatus: gatewayv1beta1.RouteStatus{
-				Parents: []gatewayv1beta1.RouteParentStatus{},
+			RouteStatus: gatewayv1.RouteStatus{
+				Parents: []gatewayv1.RouteParentStatus{},
 			},
 		},
 	}
 	tlsRoute.SetGroupVersionKind(common.TLSRouteGVK)
 
 	if rg.ingressClass != "" {
-		tlsRoute.Spec.ParentRefs = []gatewayv1beta1.ParentReference{
+		tlsRoute.Spec.ParentRefs = []gatewayv1.ParentReference{
 			{
-				Name:        gatewayv1beta1.ObjectName(rg.ingressClass),
+				Name:        gatewayv1.ObjectName(rg.ingressClass),
 				SectionName: buildSectionName("tls", rg.host, strconv.Itoa(rg.port)),
 			},
 		}
@@ -272,11 +272,11 @@ func (rg *tcpIngressRuleGroup) toTLSRoute() (gatewayv1alpha2.TLSRoute, field.Err
 	for _, rule := range rg.rules {
 		tlsRoute.Spec.Rules = append(tlsRoute.Spec.Rules,
 			gatewayv1alpha2.TLSRouteRule{
-				BackendRefs: []gatewayv1beta1.BackendRef{
+				BackendRefs: []gatewayv1.BackendRef{
 					{
-						BackendObjectReference: gatewayv1beta1.BackendObjectReference{
-							Name: gatewayv1beta1.ObjectName(rule.rule.Backend.ServiceName),
-							Port: common.PtrTo(gatewayv1beta1.PortNumber(rule.rule.Backend.ServicePort)),
+						BackendObjectReference: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName(rule.rule.Backend.ServiceName),
+							Port: common.PtrTo(gatewayv1.PortNumber(rule.rule.Backend.ServicePort)),
 						},
 					},
 				},
