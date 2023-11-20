@@ -372,8 +372,8 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
-					{Namespace: "default", Name: "multiple-matching-single-rule-test-mydomain-com"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "multiple-matching-single-rule-test-mydomain-com", Namespace: "default"},
+					{Namespace: "default", Name: "implementation-specific-test-mydomain-com"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "implementation-specific-test-mydomain-com", Namespace: "default"},
 						Spec: gatewayv1.HTTPRouteSpec{
 							CommonRouteSpec: gatewayv1.CommonRouteSpec{
 								ParentRefs: []gatewayv1.ParentReference{{
@@ -385,7 +385,7 @@ func Test_ToGateway(t *testing.T) {
 								Matches: []gatewayv1.HTTPRouteMatch{
 									{
 										Path: &gatewayv1.HTTPPathMatch{
-											Type:  &gPathRegex,
+											Type:  &gPathPrefix,
 											Value: ptrTo("/"),
 										},
 									},
@@ -473,8 +473,8 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
-					{Namespace: "default", Name: "test-mydomain-com"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "test-mydomain-com", Namespace: "default"},
+					{Namespace: "default", Name: "multiple-matching-multiple-rules-test-mydomain-com"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "multiple-matching-multiple-rules-test-mydomain-com", Namespace: "default"},
 						Spec: gatewayv1.HTTPRouteSpec{
 							CommonRouteSpec: gatewayv1.CommonRouteSpec{
 								ParentRefs: []gatewayv1.ParentReference{{
@@ -618,8 +618,8 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
-					{Namespace: "default", Name: "test-mydomain-com"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "test-mydomain-com", Namespace: "default"},
+					{Namespace: "default", Name: "implementation-specific-regex-test-mydomain-com"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "implementation-specific-regex-test-mydomain-com", Namespace: "default"},
 						Spec: gatewayv1.HTTPRouteSpec{
 							CommonRouteSpec: gatewayv1.CommonRouteSpec{
 								ParentRefs: []gatewayv1.ParentReference{{
